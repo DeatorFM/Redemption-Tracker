@@ -154,11 +154,15 @@ class MainApp(tkinter.Frame):
 
     def save_json(self):
         # Speichert Zählerstand als json-Datei
-        self.thread_running = False
-        with open("{}_save.json".format(self.channelname), "w", encoding="utf-8") as f:
-            json.dump(self.rewards, f, ensure_ascii=False)
-        self.driver.quit()
-        root.destroy()
+        try:
+            self.thread_running = False
+            if self.rewards != None:
+                with open("{}_save.json".format(self.channelname), "w", encoding="utf-8") as f:
+                    json.dump(self.rewards, f, ensure_ascii=False)
+            self.driver.quit()
+            root.destroy()
+        except AttributeError:
+            root.destroy()
 
     def initialize(self):
         # Initialisiert Browser als Hintergrundprozess
