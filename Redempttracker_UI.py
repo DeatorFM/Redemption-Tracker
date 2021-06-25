@@ -1,4 +1,4 @@
-import tkinter, json, os, time, datetime, threading
+import tkinter, json, os, time, datetime, threading, win32ui, win32gui, win32con
 from tkinter.constants import *
 from tkinter import filedialog, font
 from selenium import webdriver
@@ -45,7 +45,7 @@ class MainApp(tkinter.Frame):
         self.statusframe.grid(row=3, column=0, columnspan=2, pady=10, padx=5)
 
         self.channel = tkinter.Label(self.statusframe, text="Keine Eingabe")
-        self.channel.grid(row=0, column=0, sticky="w", padx=2)
+        self.channel.grid(row=0, column=0, sticky="w", padx=2, pady= 5)
 
         self.rewardbox = tkinter.Entry(self.statusframe, width=50, state=DISABLED)
         self.rewardbox.grid(row=1, column=0, padx=5)
@@ -61,18 +61,25 @@ class MainApp(tkinter.Frame):
         self.openbutton.grid(row=1, column=1, padx=5, pady=5)
 
         self.startbutton = tkinter.Button(
-            self, text="Start", width=10, state=DISABLED, command=self.initialize
+            self, text="Start", width=10, state=DISABLED, command= self.initialize
         )
-        self.startbutton.grid(row=4, column=0, pady=5, padx=30)
+        self.startbutton.grid(row=4, column=0, pady=10, padx=30)
 
         self.saveendbutton = tkinter.Button(
             self, text="Speichern & Beenden", command=self.save_json
         )
-        self.saveendbutton.grid(row=4, column=1, pady=5, padx=30)
+        self.saveendbutton.grid(row=4, column=1, pady=10, padx=30)
+
+        self.statusbar = tkinter.Label(self,
+              text= "Keine Datei geöffnet",
+              bd=1, 
+              relief=SUNKEN, 
+              anchor= W
+              )
+        self.statusbar.grid(row=5, column=0, columnspan=2, sticky=W+E)
 
     def create_window(self):
         # Ruft Fenster für die Eingabe der Funktion von "Create_New"
-        global createwin
 
         createwin = tkinter.Toplevel()
         createwin.title("Neues Trackingziel eingeben")
@@ -97,7 +104,7 @@ class MainApp(tkinter.Frame):
             createwin,
             text="Erstellen",
             width=10,
-            command=lambda: self.Create_New(channelentry.get(), rewardsentry.get()),
+            command=lambda: self.Create_New(channelentry.get(), rewardsentry.get(), createwin),
         )
         okbutton.grid(row=5, column=0, pady=5)
 
@@ -126,6 +133,7 @@ class MainApp(tkinter.Frame):
             self.channel["text"] = "Kanal: {}".format(self.channelname)
             self.startbutton["state"] = NORMAL
             self.rewards = {str(word): 0 for word in rewards_raw.split(", ")}
+            self.statusbar["text"]= "{}.txt importiert".format(self.channelname)
 
         if self.filename.endswith("json"):
             with open(self.filename, "r", encoding="utf-8") as f:
@@ -139,18 +147,20 @@ class MainApp(tkinter.Frame):
             self.startbutton["state"] = NORMAL
             self.rewards = rewards
             self.list_update()
+            self.statusbar["text"]= "{}_save.json importiert".format(self.channelname)
 
-    def Create_New(self, channel_name, rewardlist):
+    def Create_New(self, channel_name, rewardlist, window):
         # Kreiert eine neue txt-Datei mit dem Namen des Kanals, die alle Belohnungen enthält
-        self.channelname = channel_name
+        self.channelname = channel_name.lower()
         self.channel["text"] = "Kanal: {}".format(channel_name)
         self.rewardbox["state"] = NORMAL
         self.rewardbox.insert(0, rewardlist)
         with open("{}.txt".format(channel_name), "w", encoding="utf-8") as f:
             f.write(rewardlist)
         self.startbutton["state"] = NORMAL
-        createwin.destroy()
+        window.destroy()
         self.rewards = {str(word): 0 for word in rewardlist.split(", ")}
+        self.statusbar["text"]= "{}.txt erstellt".format(self.channelname)
 
     def save_json(self):
         # Speichert Zählerstand als json-Datei
@@ -194,10 +204,12 @@ class MainApp(tkinter.Frame):
         thread = threading.Thread(target=self.runtracking)
         thread.daemon = True
         thread.start()
+        self.statusbar["text"]= "Tracking {}".format(self.channelname)
 
     def runtracking(self):  # Hauptfunktion: Tracking-Loop
         prevlen = 0
         username = ""
+        hwnd = win32ui.FindWindow(None, r"Redempttracker by Deator").GetSafeHwnd()
 
         while self.thread_running == True:
             # Scrapt nach neuen Objekten der div-Klasse, die erscheint, wenn jemand jemand etwas einlöst
@@ -233,6 +245,7 @@ class MainApp(tkinter.Frame):
                             ] = 'Zuletzt eingelöst: "{}" um {}'.format(
                                 key, datetime.datetime.now().strftime("%H:%M")
                             )
+                        win32gui.FlashWindowEx(hwnd, win32con.FLASHW_ALL, 5, 0)
                         break
 
                 prevlen = len(rawobjects)
