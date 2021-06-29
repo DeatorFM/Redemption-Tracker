@@ -1,5 +1,6 @@
 __pycache__
 .vscode
+build
 andiloslife_save.json
 andiloslife.txt
 chromedriver.exe
@@ -9,4 +10,5 @@ NECTrack.bat
 Redemptracker.py
 tehblab_save.json
 tehblab.txt
+setup.py
 Tracking.code-workspace

@@ -1,4 +1,4 @@
-import tkinter, json, os, time, datetime, threading, win32ui, win32gui, win32con
+import tkinter, json, os, time, datetime, textwrap, threading, win32ui, win32gui, win32con
 from tkinter.constants import *
 from tkinter import filedialog, font
 from selenium import webdriver
@@ -20,7 +20,7 @@ class MainApp(tkinter.Frame):
         self.eventlist = []
         self.listmode = "counter"
 
-        self.lastredeemed = tkinter.Label(self, text="Zuletzt eingelöst: unbekannt")
+        self.lastredeemed = tkinter.Label(self, text="Letzte: unbekannt")
         self.lastredeemed.grid(
             row=0, column=0, columnspan=3, padx=3, pady=5, sticky="w"
         )
@@ -57,23 +57,24 @@ class MainApp(tkinter.Frame):
         self.plusbutton.grid(row=2, column=2, pady=5, sticky= E, padx= 50)
 
         self.statusframe = tkinter.LabelFrame(self, text="Trackinginformationen")
-        self.statusframe.grid(row=3, column=0, columnspan=3, pady=10, padx=5)
+        self.statusframe.grid(row=3, column=0, columnspan=3, pady=10, padx=5, sticky=W+E)
 
         self.channel = tkinter.Label(self.statusframe, text="Keine Eingabe")
-        self.channel.grid(row=0, column=0, sticky="w", padx=2, pady=5)
+        self.channel.grid(row=0, column=0, rowspan=2, sticky="w", padx=2, pady=5)
 
-        self.rewardbox = tkinter.Entry(self.statusframe, width=50, state=DISABLED)
-        self.rewardbox.grid(row=1, column=0, padx=5)
+        self.statusframe.grid_columnconfigure(0, weight= 3)
+        self.statusframe.grid_columnconfigure(1, weight= 0)
+        self.statusframe.grid_columnconfigure(2, weight= 0)
 
         self.newbutton = tkinter.Button(
             self.statusframe, text="Neu", width=10, command=self.create_window
         )
-        self.newbutton.grid(row=0, column=1, padx=5)
+        self.newbutton.grid(row=0, column=1, padx=5, sticky= E)
 
         self.openbutton = tkinter.Button(
             self.statusframe, text="Öffnen", width=10, command=self.Open_File
         )
-        self.openbutton.grid(row=1, column=1, padx=5, pady=5)
+        self.openbutton.grid(row=0, column=2, padx=5, pady=5, sticky=E)
 
         self.startbutton = tkinter.Button(
             self, text="Start", width=10, state=DISABLED, command=self.initialize
@@ -140,29 +141,26 @@ class MainApp(tkinter.Frame):
         if self.filename.endswith("txt"):
             with open(self.filename, "r", encoding="utf-8") as f:
                 rewards_raw = f.read()
-            self.rewardbox["state"] = NORMAL
-            self.rewardbox.delete(0, END)
-            self.rewardbox.insert(0, rewards_raw)
             self.channelname = os.path.basename(self.filename)[:-4]  # Alternativ f.name
             self.channel["text"] = "Kanal: {}".format(self.channelname)
             self.startbutton["state"] = NORMAL
             self.rewards = {str(word): 0 for word in rewards_raw.split(", ")}
+            for key in self.rewards.keys():
+                self.redeemedbox.insert(END, textwrap.shorten(key, width= 55, placeholder=" ..."))
             self.statusbar["text"] = "{}.txt importiert".format(self.channelname)
 
         if self.filename.endswith("json"):
             with open(self.filename, "r", encoding="utf-8") as f:
                 rewards = json.load(f)
             rewards_raw = ", ".join(list(rewards.keys()))
-            self.rewardbox["state"] = NORMAL
-            self.rewardbox.delete(0, END)
-            self.rewardbox.insert(0, rewards_raw)
             self.channelname = os.path.basename(self.filename)[
                 :-10
             ]  # Alternativ f.name
             self.channel["text"] = "Kanal: {}".format(self.channelname)
             self.startbutton["state"] = NORMAL
             self.rewards = rewards
-            self.list_update()
+            for key in self.rewards.keys():
+                self.redeemedbox.insert(END, textwrap.shorten(key, width= 55, placeholder=" ..."))
             self.statusbar["text"] = "{}_save.json importiert".format(self.channelname)
 
     def Create_New(self, channel_name, rewardlist, window):
@@ -177,6 +175,8 @@ class MainApp(tkinter.Frame):
         window.destroy()
         self.rewards = {str(word): 0 for word in rewardlist.split(", ")}
         self.statusbar["text"] = "{}.txt erstellt".format(self.channelname)
+        for key in self.rewards.keys():
+            self.redeemedbox.insert(END, textwrap.shorten(key, width= 55, placeholder=" ..."))
 
     def save_json(self):
         # Speichert Zählerstand als json-Datei
@@ -195,6 +195,7 @@ class MainApp(tkinter.Frame):
 
     def initialize(self):
         # Initialisiert Browser als Hintergrundprozess
+        self.list_update()
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--headless")
@@ -299,7 +300,7 @@ class MainApp(tkinter.Frame):
             self.redeemedbox.delete(0, END)
             for key, value in self.rewards.items():
                 if value != 0:
-                    self.redeemedbox.insert(END, "{:<55} {:2}".format(key, value))
+                    self.redeemedbox.insert(END, "{:<55} {:2}".format(textwrap.shorten(key, width= 55, placeholder=" ..."), value))
         if self.listmode == "events":
             self.redeemedbox.delete(0, END)
             for event in self.eventlist:
