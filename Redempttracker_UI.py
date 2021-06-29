@@ -321,7 +321,7 @@ class MainApp(tkinter.Frame):
                     elif operator == "+":
                         self.rewards[k] += 1
                         break
-            self.list_update(self.listmode)
+            self.list_update()
         except IndexError:
             pass
 
