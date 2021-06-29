@@ -3,25 +3,31 @@ from tkinter.constants import *
 from tkinter import filedialog, font
 from selenium import webdriver
 
+
 class MainApp(tkinter.Frame):
     def __init__(self, master=None):
         # Initialisiert GUI des Programms
         super().__init__(master)
         self.pack(expand=False)
+        self.grid_columnconfigure(0, weight= 0)
+        self.grid_columnconfigure(1, weight= 1)
+        self.grid_columnconfigure(2, weight= 3)
 
         self.rewards = None
         self.channelname = None
         self.thread_running = True
         self.driver = None
+        self.eventlist = []
+        self.listmode = "counter"
 
         self.lastredeemed = tkinter.Label(self, text="Zuletzt eingelöst: unbekannt")
         self.lastredeemed.grid(
-            row=0, column=0, columnspan=2, padx=12, pady=5, sticky="w"
+            row=0, column=0, columnspan=3, padx=3, pady=5, sticky="w"
         )
 
         monofont = font.Font(family="Consolas", size=10)
-        self.redeemedbox = tkinter.Listbox(self, width=55, font= monofont, relief= SUNKEN)
-        self.redeemedbox.grid(row=1, column=0, columnspan=2)
+        self.redeemedbox = tkinter.Listbox(self, width=58, font=monofont, relief=SUNKEN)
+        self.redeemedbox.grid(row=1, column=0, columnspan=3)
 
         self.minusbutton = tkinter.Button(
             self,
@@ -30,7 +36,16 @@ class MainApp(tkinter.Frame):
             state=DISABLED,
             command=lambda: self.deleter("-"),
         )
-        self.minusbutton.grid(row=2, column=0, pady=5, padx=60)
+        self.minusbutton.grid(row=2, column=0, pady=5)
+
+        self.modebutton = tkinter.Button(
+            self,
+            text="Ereignisse",
+            width=10,
+            state=DISABLED,
+            command=lambda: self.set_mode("events"),
+        )
+        self.modebutton.grid(row=2, column=1, padx= 10, pady=5)
 
         self.plusbutton = tkinter.Button(
             self,
@@ -39,13 +54,13 @@ class MainApp(tkinter.Frame):
             state=DISABLED,
             command=lambda: self.deleter("+"),
         )
-        self.plusbutton.grid(row=2, column=1, pady=5)
+        self.plusbutton.grid(row=2, column=2, pady=5, sticky= E, padx= 50)
 
         self.statusframe = tkinter.LabelFrame(self, text="Trackinginformationen")
-        self.statusframe.grid(row=3, column=0, columnspan=2, pady=10, padx=5)
+        self.statusframe.grid(row=3, column=0, columnspan=3, pady=10, padx=5)
 
         self.channel = tkinter.Label(self.statusframe, text="Keine Eingabe")
-        self.channel.grid(row=0, column=0, sticky="w", padx=2, pady= 5)
+        self.channel.grid(row=0, column=0, sticky="w", padx=2, pady=5)
 
         self.rewardbox = tkinter.Entry(self.statusframe, width=50, state=DISABLED)
         self.rewardbox.grid(row=1, column=0, padx=5)
@@ -61,22 +76,19 @@ class MainApp(tkinter.Frame):
         self.openbutton.grid(row=1, column=1, padx=5, pady=5)
 
         self.startbutton = tkinter.Button(
-            self, text="Start", width=10, state=DISABLED, command= self.initialize
+            self, text="Start", width=10, state=DISABLED, command=self.initialize
         )
-        self.startbutton.grid(row=4, column=0, pady=10, padx=30)
+        self.startbutton.grid(row=4, column=0, pady=10, padx=40)
 
         self.saveendbutton = tkinter.Button(
             self, text="Speichern & Beenden", command=self.save_json
         )
-        self.saveendbutton.grid(row=4, column=1, pady=10, padx=30)
+        self.saveendbutton.grid(row=4, column=1, columnspan=2, padx= 40, pady=10, sticky= E)
 
-        self.statusbar = tkinter.Label(self,
-              text= "Keine Datei geöffnet",
-              bd=1, 
-              relief=SUNKEN, 
-              anchor= W
-              )
-        self.statusbar.grid(row=5, column=0, columnspan=2, sticky=W+E)
+        self.statusbar = tkinter.Label(
+            self, text="Keine Datei geöffnet", bd=1, relief=SUNKEN, anchor=W
+        )
+        self.statusbar.grid(row=5, column=0, columnspan=3, sticky=W + E)
 
     def create_window(self):
         # Ruft Fenster für die Eingabe der Funktion von "Create_New"
@@ -104,7 +116,9 @@ class MainApp(tkinter.Frame):
             createwin,
             text="Erstellen",
             width=10,
-            command=lambda: self.Create_New(channelentry.get(), rewardsentry.get(), createwin),
+            command=lambda: self.Create_New(
+                channelentry.get(), rewardsentry.get(), createwin
+            ),
         )
         okbutton.grid(row=5, column=0, pady=5)
 
@@ -129,11 +143,11 @@ class MainApp(tkinter.Frame):
             self.rewardbox["state"] = NORMAL
             self.rewardbox.delete(0, END)
             self.rewardbox.insert(0, rewards_raw)
-            self.channelname = os.path.basename(self.filename)[:-4]
+            self.channelname = os.path.basename(self.filename)[:-4]  # Alternativ f.name
             self.channel["text"] = "Kanal: {}".format(self.channelname)
             self.startbutton["state"] = NORMAL
             self.rewards = {str(word): 0 for word in rewards_raw.split(", ")}
-            self.statusbar["text"]= "{}.txt importiert".format(self.channelname)
+            self.statusbar["text"] = "{}.txt importiert".format(self.channelname)
 
         if self.filename.endswith("json"):
             with open(self.filename, "r", encoding="utf-8") as f:
@@ -142,12 +156,14 @@ class MainApp(tkinter.Frame):
             self.rewardbox["state"] = NORMAL
             self.rewardbox.delete(0, END)
             self.rewardbox.insert(0, rewards_raw)
-            self.channelname = os.path.basename(self.filename)[:-10]
+            self.channelname = os.path.basename(self.filename)[
+                :-10
+            ]  # Alternativ f.name
             self.channel["text"] = "Kanal: {}".format(self.channelname)
             self.startbutton["state"] = NORMAL
             self.rewards = rewards
             self.list_update()
-            self.statusbar["text"]= "{}_save.json importiert".format(self.channelname)
+            self.statusbar["text"] = "{}_save.json importiert".format(self.channelname)
 
     def Create_New(self, channel_name, rewardlist, window):
         # Kreiert eine neue txt-Datei mit dem Namen des Kanals, die alle Belohnungen enthält
@@ -160,17 +176,20 @@ class MainApp(tkinter.Frame):
         self.startbutton["state"] = NORMAL
         window.destroy()
         self.rewards = {str(word): 0 for word in rewardlist.split(", ")}
-        self.statusbar["text"]= "{}.txt erstellt".format(self.channelname)
+        self.statusbar["text"] = "{}.txt erstellt".format(self.channelname)
 
     def save_json(self):
         # Speichert Zählerstand als json-Datei
         try:
             self.thread_running = False
             if self.rewards != None:
-                with open("{}_save.json".format(self.channelname), "w", encoding="utf-8") as f:
+                with open(
+                    "{}_save.json".format(self.channelname), "w", encoding="utf-8"
+                ) as f:
                     json.dump(self.rewards, f, ensure_ascii=False)
             self.driver.quit()
             root.destroy()
+
         except AttributeError:
             root.destroy()
 
@@ -192,19 +211,19 @@ class MainApp(tkinter.Frame):
                 self.channelname, self.channelname
             )
         )
-        time.sleep(1)
 
         self.newbutton["state"] = DISABLED
         self.openbutton["state"] = DISABLED
         self.minusbutton["state"] = NORMAL
         self.plusbutton["state"] = NORMAL
         self.startbutton["state"] = DISABLED
+        self.modebutton["state"] = NORMAL
 
         # Scaping-Schleife wird in einem Thread gestartet, damit mainloop von tkinter nicht crasht
         thread = threading.Thread(target=self.runtracking)
         thread.daemon = True
         thread.start()
-        self.statusbar["text"]= "Tracking {}".format(self.channelname)
+        self.statusbar["text"] = "Tracking {}".format(self.channelname)
 
     def runtracking(self):  # Hauptfunktion: Tracking-Loop
         prevlen = 0
@@ -227,26 +246,31 @@ class MainApp(tkinter.Frame):
                 if len(Text.split()) >= 2:
                     if Text.split()[1] == "hat":
                         username = Text.split()[0]
+                    else:
+                        raw_username = self.driver.find_elements_by_xpath(
+                            "//div[@class='sc-AxjAm ipUaGy']//span[@class='chat-author__display-name']"
+                        )
+                        username = raw_username[-1].text
 
                 # Prüft ob eine der Keys im extrahierten Text ist
                 for key in self.rewards.keys():
                     if key in Text:
                         self.rewards[key] += 1
-                        if username:
-                            self.lastredeemed[
-                                "text"
-                            ] = 'Zuletzt eingelöst: "{}" um {} von {}'.format(
-                                key, datetime.datetime.now().strftime("%H:%M"), username
+                        self.lastredeemed[
+                            "text"
+                        ] = 'Letzte: "{}" um {} von {}'.format(
+                            key, datetime.datetime.now().strftime("%H:%M"), username
+                        )
+                        self.eventlist.append(
+                            '{}: "{}" von {}'.format(
+                                datetime.datetime.now().strftime("%H:%M"), key, username
                             )
-                            username = ""
-                        else:
-                            self.lastredeemed[
-                                "text"
-                            ] = 'Zuletzt eingelöst: "{}" um {}'.format(
-                                key, datetime.datetime.now().strftime("%H:%M")
-                            )
+                        )
                         win32gui.FlashWindowEx(hwnd, win32con.FLASHW_ALL, 5, 0)
                         break
+
+                if len(self.eventlist) > 10:
+                    del self.eventlist[0]
 
                 prevlen = len(rawobjects)
                 self.list_update()
@@ -254,12 +278,32 @@ class MainApp(tkinter.Frame):
             prevlen = len(rawobjects)
             time.sleep(0.5)
 
+    def set_mode(self, mode):
+        self.listmode = mode
+        self.list_update()
+
+        if mode == "counter":
+            self.minusbutton["state"] = NORMAL
+            self.plusbutton["state"] = NORMAL
+            self.modebutton["text"]= "Ereignisse"
+            self.modebutton["command"] = lambda: self.set_mode("events")
+        else:
+            self.minusbutton["state"] = DISABLED
+            self.plusbutton["state"] = DISABLED
+            self.modebutton["text"]= "Zähler"
+            self.modebutton["command"]= lambda: self.set_mode("counter")
+
     def list_update(self):
         # Aktualisiert die Liste, in der alle eingelösten Belohnungen angezeigt werden
-        self.redeemedbox.delete(0, END)
-        for key, value in self.rewards.items():
-            if value != 0:
-                self.redeemedbox.insert(END, "{:<50} {:2}".format(key, value))
+        if self.listmode == "counter":
+            self.redeemedbox.delete(0, END)
+            for key, value in self.rewards.items():
+                if value != 0:
+                    self.redeemedbox.insert(END, "{:<55} {:2}".format(key, value))
+        if self.listmode == "events":
+            self.redeemedbox.delete(0, END)
+            for event in self.eventlist:
+                self.redeemedbox.insert(0, event)
 
     def deleter(self, operator):
         # Zieht bzw. addiert je nach Klick auf "-1" oder "+1" vom Zähler des ausgewählten Elements
@@ -272,12 +316,12 @@ class MainApp(tkinter.Frame):
             for k in self.rewards.keys():
                 if k in strkey:
                     if operator == "-":
-                        self.rewards[k] -= 1 #if self.rewards[k] != 0 else 0
+                        self.rewards[k] -= 1  # if self.rewards[k] != 0 else 0
                         break
                     elif operator == "+":
                         self.rewards[k] += 1
                         break
-            self.list_update()
+            self.list_update(self.listmode)
         except IndexError:
             pass
 
