@@ -1,5 +1,6 @@
 __pycache__
 .vscode
+.gitignore
 build
 andiloslife_save.json
 andiloslife.txt
@@ -7,8 +8,15 @@ chromedriver.exe
 gutelaunetyp_save.json
 gutelaunetyp.txt
 NECTrack.bat
-Redemptracker.py
+Redempttracker_UI.pyw
+Redempttracker_UI.spec
+source.py
 tehblab_save.json
 tehblab.txt
 setup.py
 Tracking.code-workspace
+Raw_Distribution
+dist 
+dist_packer.bat
+pywintypes39.dll
+456440_5121236-lq.wav
